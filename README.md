@@ -69,3 +69,34 @@ fn admin_update(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult 
     Ok(())
 }
 ```
+
+
+#### 3- Arithmetic underflow & overflow
+
+In smart contracts, overflow/underflows are quite common because blockchain applications often compute math over financial data.
+Both Solana smart contracts and Solana's core runtime are written in Rust, and there have been several public reports about arithmetic overflows/underflows in Solana core runtime.
+It may be a misconception that Rust is memory-safe, so it is free of arithmetic overflow/underflows for many developers, but this is only true in debug mode. However, when developers compile their contracts in release mode with the - release flag, Rust does not check for integer overflow that causes panics. Rather, if overflow occurs, Rust performs two's complement wrapping. In brief, values greater than the maximum value the type can hold "wrap around" to the minimum of the type's values. The program won't panic, whereas the variable will have a value that probably isn't what you expected.
+Note that you're compiling your contracts in release mode by using the Solana BPF toolchain ($ cargo build-bpf).
+
+A vulnerable example:
+
+```
+let X: u32 = 1000; 
+
+fn token_withdraw(program_id: &Pubkey, accounts: &[AccountInfo], amount: u32) -> ProgramResult {
+
+    // ...
+    // deserialize & validate user and vault accounts
+    // ...
+    
+    if amount + X > vault.user_balance[user_id] {
+        return Err(ProgramError::AttemptToWithdrawTooMuch);
+    }
+    
+    // ...
+    // Transfer `amount` many tokens from vault to user-controlled account ...
+    // ...
+    
+    Ok(())
+}
+```
