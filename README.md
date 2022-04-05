@@ -40,3 +40,32 @@ fn withdraw_funds(program_id: &Pubkey, accounts: &[AccountInfo], amount: u64) ->
     Ok(())
 }
 ```
+
+
+#### 2- Missing Signer Check
+
+If an instruction should only be open to a fixed set of entities, you must control that the right entity has signed the call by inspecting the AccountInfo::is_signer field. 
+Note that virtually any smart contract has instructions that are limited to be only called by specific entities, for example, admin-only instructions like locking the contract or user-specific instructions that alter the state of a user's account. Although it seems pretty obvious to verify that the respective entity has signed the related transaction, these checks are usually forgotten.
+
+A vulnerable example:
+
+```
+fn admin_update(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    let account_iter = &mut accounts.iter();
+    let config = ConfigAccount::unpack(next_account_info(account_iter)?)?;
+    let admin = next_account_info(account_iter)?;
+    let admin_new = next_account_info(account_iter)?;
+
+    // ...
+    // Validate the config account...
+    // ...
+    
+    if admin.pubkey() != config.admin {
+        return Err(ProgramError::InvalidAdminAccount);
+    }
+    
+    config.admin = admin_new.pubkey();
+    
+    Ok(())
+}
+```
